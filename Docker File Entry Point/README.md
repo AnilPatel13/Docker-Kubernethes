@@ -537,7 +537,7 @@ graph TB
         E --> I[Set Environment Variables]
         F --> J[Process Templates]
         F --> K[Wait for Dependencies]
-        G --> L[exec "$@"]
+        G --> L[Execute Main Process]
     end
     
     style C fill:#e8f5e8
