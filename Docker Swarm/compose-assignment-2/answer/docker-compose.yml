@@ -1,0 +1,36 @@
+# version isn't needed as of 2020 for docker compose CLI. 
+# All 2.x and 3.x features supported
+# version: '2'
+# NOTE: move this answer file up a directory so it'll work
+
+services:
+
+  drupal:
+    image: drupal:8.2
+    ports:
+      - "8080:80"
+    volumes:
+      - drupal-modules:/var/www/html/modules
+      - drupal-profiles:/var/www/html/profiles       
+      - drupal-sites:/var/www/html/sites      
+      - drupal-themes:/var/www/html/themes
+ 
+  postgres:
+    image: postgres:14
+    environment:
+      - POSTGRES_PASSWORD_FILE=/run/secrets/psql-pw
+    secrets:
+      - psql-pw
+    volumes:
+      - drupal-data:/var/lib/postgresql/data
+
+volumes:
+  drupal-data:
+  drupal-modules:
+  drupal-profiles:
+  drupal-sites:
+  drupal-themes:
+
+secrets:
+  psql-pw:
+    external: true
