@@ -610,6 +610,230 @@ docker config rm my-config
 ```
 </details>
 
+<details>
+<summary>📦 <strong>Vagrant Multi-Node Setup (Complete Workflow)</strong></summary>
+
+### Prerequisites
+```bash
+# Install required software
+# - VirtualBox (hypervisor)
+# - Vagrant (VM management)
+# - Git (version control)
+```
+
+### Step 1: Environment Preparation
+```bash
+# Check Vagrant installation
+vagrant --version
+
+# Add Ubuntu 20.04 LTS box
+vagrant box add ubuntu/focal64 --provider virtualbox
+
+# Verify box installation
+vagrant box list
+```
+
+### Step 2: Vagrantfile Configuration
+```ruby
+# Sample Vagrantfile for 3-node cluster
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/focal64"
+  
+  # Manager Node
+  config.vm.define "server1" do |server1|
+    server1.vm.hostname = "server1"
+    server1.vm.network "private_network", ip: "192.168.1.10"
+    server1.vm.provider "virtualbox" do |vb|
+      vb.memory = "2048"
+      vb.cpus = 2
+    end
+  end
+  
+  # Worker Node 1
+  config.vm.define "server2" do |server2|
+    server2.vm.hostname = "server2"
+    server2.vm.network "private_network", ip: "192.168.1.11"
+    server2.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+      vb.cpus = 1
+    end
+  end
+  
+  # Worker Node 2
+  config.vm.define "server3" do |server3|
+    server3.vm.hostname = "server3"
+    server3.vm.network "private_network", ip: "192.168.1.12"
+    server3.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+      vb.cpus = 1
+    end
+  end
+end
+```
+
+### Step 3: VM Deployment
+```bash
+# Start all VMs
+vagrant up
+
+# Check status
+vagrant status
+
+# Expected output:
+Current machine states:
+server1    running (virtualbox)
+server2    running (virtualbox)
+server3    running (virtualbox)
+```
+
+### Step 4: Docker Installation (on each VM)
+```bash
+# SSH into each server and install Docker
+vagrant ssh server1
+
+# Install Docker (run on each node)
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker vagrant
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Verify installation
+docker --version
+exit
+
+# Repeat for server2 and server3
+vagrant ssh server2
+# ... install Docker ...
+vagrant ssh server3
+# ... install Docker ...
+```
+
+### Step 5: Swarm Cluster Formation
+```bash
+# Initialize swarm on manager (server1)
+vagrant ssh server1
+docker swarm init --advertise-addr 192.168.1.10
+
+# Copy the join token output
+# Example: docker swarm join --token SWMTKN-1-xxx... 192.168.1.10:2377
+```
+
+### Step 6: Join Worker Nodes
+```bash
+# Join server2 to swarm
+vagrant ssh server2
+docker swarm join --token SWMTKN-1-xxx... 192.168.1.10:2377
+exit
+
+# Join server3 to swarm
+vagrant ssh server3
+docker swarm join --token SWMTKN-1-xxx... 192.168.1.10:2377
+exit
+```
+
+### Step 7: Verify Cluster
+```bash
+# Check cluster status from manager
+vagrant ssh server1
+docker node ls
+
+# Expected output:
+ID                    HOSTNAME   STATUS   AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+xxx *                 server1    Ready    Active         Leader           28.1.1
+yyy                   server2    Ready    Active                          28.1.1
+zzz                   server3    Ready    Active                          28.1.1
+```
+
+### Step 8: Test Service Deployment
+```bash
+# Create a test service with 3 replicas
+docker service create --name test-service --replicas 3 alpine ping 8.8.8.8
+
+# Check service status
+docker service ls
+docker service ps test-service
+
+# Expected: Tasks distributed across all nodes
+ID             NAME               IMAGE           NODE      DESIRED STATE   CURRENT STATE
+xxx            test-service.1     alpine:latest   server1   Running         Running
+yyy            test-service.2     alpine:latest   server2   Running         Running
+zzz            test-service.3     alpine:latest   server3   Running         Running
+```
+
+### Step 9: Promote Additional Manager (Optional)
+```bash
+# Promote server2 to manager for HA
+docker node update --role manager server2
+
+# Verify manager status
+docker node ls
+
+# Now you have 2 managers and 1 worker
+```
+
+### Step 10: Cleanup (When Done)
+```bash
+# Leave swarm on all nodes
+vagrant ssh server2
+docker swarm leave
+exit
+
+vagrant ssh server3
+docker swarm leave
+exit
+
+vagrant ssh server1
+docker swarm leave --force
+exit
+
+# Destroy VMs
+vagrant destroy -f
+```
+
+### Troubleshooting Common Issues
+```bash
+# VM networking issues
+vagrant reload --provision
+
+# SSH connection problems
+vagrant ssh-config
+
+# Docker daemon issues
+vagrant ssh server1
+sudo systemctl status docker
+sudo systemctl restart docker
+
+# Swarm token regeneration
+docker swarm join-token worker
+docker swarm join-token manager
+```
+
+### Vagrant Management Commands
+```bash
+# Start specific VM
+vagrant up server1
+
+# Restart VM
+vagrant reload server1
+
+# Suspend/Resume VMs
+vagrant suspend
+vagrant resume
+
+# SSH into specific VM
+vagrant ssh server1
+
+# Check VM status
+vagrant status
+vagrant global-status
+
+# Destroy specific VM
+vagrant destroy server1
+```
+
+</details>
+
 ## 🎯 Advanced Swarm Features
 
 ### High Availability Setup
