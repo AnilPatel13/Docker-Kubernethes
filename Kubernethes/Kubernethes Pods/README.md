@@ -59,17 +59,39 @@ graph TB
 <details>
 <summary><strong>Basic Pod Operations</strong></summary>
 
-### Creating Pods
+### Creating Pods (From Running Pods.ipynb)
 
 ```bash
+# Check Kubernetes version
+kubectl version
+# Output: Client Version: v1.32.2, Server Version: v1.32.2
+
 # Create a simple pod
 kubectl run my-nginx --image nginx
+# Output: pod/my-nginx created
 
 # Check pod status
 kubectl get pods
+# Output: NAME       READY   STATUS    RESTARTS   AGE
+#         my-nginx   1/1     Running   0          65s
 
-# Get detailed information
+# Get detailed information about all resources
 kubectl get all
+# Shows pods, services, deployments, and replicasets
+```
+
+### Pod vs Deployment Comparison
+
+```bash
+# Create deployment (managed pods)
+kubectl create deployment my-nginx --image nginx
+# Output: deployment.apps/my-nginx created
+
+# Now you have both standalone pod and deployment-managed pod
+kubectl get pods
+# Output: NAME                        READY   STATUS    RESTARTS   AGE
+#         my-nginx                    1/1     Running   0          11m
+#         my-nginx-5b584c864b-hmln8   1/1     Running   0          9s
 ```
 
 ### Pod vs Deployment
@@ -110,16 +132,24 @@ stateDiagram-v2
 <details>
 <summary><strong>Deployment Management</strong></summary>
 
-### Creating Deployments
+### Creating Deployments (From Relicaset.ipynb)
 
 ```bash
-# Create deployment
+# Create Apache deployment
 kubectl create deployment my-apache --image httpd
+# Output: deployment.apps/my-apache created
 
-# View deployment details
-kubectl get deployment
-kubectl get replicaset
-kubectl get pods
+# Check pod creation
+kubectl get pod
+# Output: NAME                         READY   STATUS    RESTARTS   AGE
+#         my-apache-856f76d9f8-fhdqq   1/1     Running   0          9s
+
+# View all resources created by deployment
+kubectl get all
+# Shows:
+# - pod/my-apache-856f76d9f8-fhdqq
+# - deployment.apps/my-apache (1/1 ready)
+# - replicaset.apps/my-apache-856f76d9f8 (1 desired, 1 current, 1 ready)
 ```
 
 ### Deployment Hierarchy
@@ -172,17 +202,22 @@ graph LR
     Action --> Pod3[New Pod]
 ```
 
-### Scaling Operations
+### Scaling Operations (From Relicaset.ipynb)
 
 ```bash
-# Scale deployment
+# Scale Apache deployment to 2 replicas
 kubectl scale deploy/my-apache --replicas 2
+# Output: deployment.apps/my-apache scaled
 
-# Verify scaling
+# Verify scaling results
 kubectl get all
+# Output shows:
+# pod/my-apache-856f76d9f8-5c69h   1/1     Running   0          59s
+# pod/my-apache-856f76d9f8-fhdqq   1/1     Running   0          2m53s
+# deployment.apps/my-apache   2/2     2            2           2m53s
+# replicaset.apps/my-apache-856f76d9f8   2         2         2       2m53s
 
-# Check pod distribution
-kubectl get pods -o wide
+# ReplicaSet automatically maintains desired pod count
 ```
 
 </details>
@@ -229,18 +264,24 @@ sequenceDiagram
 <details>
 <summary><strong>Horizontal Scaling</strong></summary>
 
-### Manual Scaling
+### Manual Scaling (Practical Examples)
 
 ```bash
-# Scale up deployment
-kubectl scale deploy/my-apache --replicas 5
+# Scale up deployment (from notebook example)
+kubectl scale deploy/my-apache --replicas 2
+# Output: deployment.apps/my-apache scaled
 
 # Scale down deployment
 kubectl scale deploy/my-apache --replicas 1
 
 # Check scaling status
 kubectl get deployment
+# Shows: my-apache   2/2     2            2           2m53s
+
 kubectl get pods
+# Shows both pods running:
+# my-apache-856f76d9f8-5c69h   1/1     Running   0          59s
+# my-apache-856f76d9f8-fhdqq   1/1     Running   0          2m53s
 ```
 
 ### Scaling Visualization
@@ -446,17 +487,90 @@ kubectl describe nodes
 
 ```
 Kubernethes Pods/
-├── Running Pods.ipynb          # Basic pod operations and lifecycle
-└── Relicaset.ipynb            # Deployment and ReplicaSet management
+├── Running Pods.ipynb          # Pod creation, deployment comparison, cleanup
+│                               # - kubectl run vs kubectl create deployment
+│                               # - Pod lifecycle demonstration
+│                               # - Resource cleanup (kubectl delete)
+└── Relicaset.ipynb            # Deployment scaling and ReplicaSet management
+                                # - Apache deployment creation
+                                # - Scaling from 1 to 2 replicas
+                                # - ReplicaSet automatic pod management
 ```
 
-## 🎓 Learning Path
+## 📝 Key Learning Points from Notebooks
 
-1. **Pod Basics**: Understanding containers in Kubernetes
-2. **Deployments**: Managing application lifecycle
-3. **Scaling**: Horizontal pod autoscaling
-4. **Monitoring**: Observability and troubleshooting
-5. **Advanced**: Resource management and security
+<details>
+<summary><strong>Running Pods.ipynb Insights</strong></summary>
+
+### Pod Creation Methods
+1. **Standalone Pod**: `kubectl run my-nginx --image nginx`
+   - Creates single pod without management
+   - No auto-healing or scaling
+   - Manual lifecycle management
+
+2. **Deployment-Managed Pod**: `kubectl create deployment my-nginx --image nginx`
+   - Creates deployment → replicaset → pod hierarchy
+   - Automatic healing and scaling capabilities
+   - Declarative management
+
+### Resource Hierarchy Observed
+```
+kubectl get all output shows:
+├── pod/my-nginx (standalone)
+├── pod/my-nginx-5b584c864b-hmln8 (managed)
+├── service/kubernetes
+├── deployment.apps/my-nginx
+└── replicaset.apps/my-nginx-5b584c864b
+```
+
+</details>
+
+<details>
+<summary><strong>Relicaset.ipynb Insights</strong></summary>
+
+### Scaling Demonstration
+1. **Initial State**: 1 Apache pod running
+2. **Scaling Command**: `kubectl scale deploy/my-apache --replicas 2`
+3. **Result**: ReplicaSet creates additional pod automatically
+4. **Final State**: 2 pods with same ReplicaSet hash (856f76d9f8)
+
+### ReplicaSet Naming Convention
+- **Deployment**: `my-apache`
+- **ReplicaSet**: `my-apache-856f76d9f8` (deployment + hash)
+- **Pods**: `my-apache-856f76d9f8-fhdqq`, `my-apache-856f76d9f8-5c69h`
+
+### Scaling Verification
+```bash
+# Before scaling: 1/1 pods ready
+deployment.apps/my-apache   1/1     1            1           19s
+
+# After scaling: 2/2 pods ready  
+deployment.apps/my-apache   2/2     2            2           2m53s
+```
+
+</details>
+
+## 🎓 Learning Path (Based on Notebook Progression)
+
+1. **Pod Basics** (`Running Pods.ipynb`): 
+   - Kubernetes version verification
+   - Single pod creation with `kubectl run`
+   - Understanding pod states and lifecycle
+
+2. **Deployments** (`Running Pods.ipynb`):
+   - Deployment creation with `kubectl create deployment`
+   - Comparing standalone vs managed pods
+   - Resource hierarchy understanding
+
+3. **Scaling** (`Relicaset.ipynb`):
+   - ReplicaSet automatic management
+   - Manual scaling with `kubectl scale`
+   - Pod distribution and naming conventions
+
+4. **Cleanup & Management**:
+   - Resource deletion (`kubectl delete pod`, `kubectl delete deployment`)
+   - State verification with `kubectl get all`
+   - Best practices for resource management
 
 ## 📈 Pod Management Workflow
 
