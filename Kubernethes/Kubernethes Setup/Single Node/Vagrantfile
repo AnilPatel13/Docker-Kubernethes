@@ -1,0 +1,58 @@
+# Vagrantfile — Minikube + kubectl (latest) on Ubuntu 20.04 (focal64)
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/focal64"
+  config.vm.hostname = "minikube-vm"
+
+  # VM resources
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = 4
+    vb.memory = 6144
+  end
+
+  # Disable synced folder for speed
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provision "shell", inline: <<-'SHELL'
+    set -euxo pipefail
+
+    echo ">>> Updating packages"
+    sudo apt-get update -y
+    sudo apt-get upgrade -y
+    sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release conntrack socat
+
+    echo ">>> Installing Docker"
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor | sudo tee /etc/apt/keyrings/docker.gpg >/dev/null
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+      https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    sudo apt-get update -y
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+    sudo systemctl enable --now docker
+    sudo usermod -aG docker vagrant
+
+    echo ">>> Installing latest kubectl"
+    KVER=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+    curl -LO "https://dl.k8s.io/release/${KVER}/bin/linux/amd64/kubectl"
+    sudo install -m 0755 kubectl /usr/local/bin/kubectl
+    rm -f kubectl
+
+    echo ">>> Installing latest minikube"
+    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    sudo install -m 0755 minikube-linux-amd64 /usr/local/bin/minikube
+    rm -f minikube-linux-amd64
+
+    echo ">>> Starting minikube with Docker driver (as vagrant)"
+    # Run as 'vagrant' so docker driver doesn't complain about root
+    sudo -u vagrant -H bash -lc "sg docker -c 'minikube start --driver=docker --kubernetes-version=stable --cpus=2 --memory=4096mb'"
+
+    echo ">>> Ensuring kube dirs owned by vagrant"
+    sudo -u vagrant -H bash -lc "mkdir -p ~/.kube ~/.minikube"
+
+    echo '>>> Versions'
+    kubectl version --client=true
+    sudo -u vagrant -H bash -lc "minikube version"
+    sudo -u vagrant -H bash -lc "kubectl get nodes -o wide"
+  SHELL
+end
