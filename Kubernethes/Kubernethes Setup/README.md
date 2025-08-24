@@ -16,6 +16,62 @@ Complete Kubernetes cluster setup environments using Vagrant and VirtualBox. Inc
 - Understand networking and CNI configuration
 - Explore dashboard and monitoring setup
 
+### Kubernetes Architecture
+```mermaid
+graph TB
+    subgraph "Control Plane (Master Node)"
+        A[API Server] --> B[etcd]
+        A --> C[Scheduler]
+        A --> D[Controller Manager]
+        E[Cloud Controller Manager] --> A
+    end
+    
+    subgraph "Data Plane (Worker Nodes)"
+        F[kubelet] --> G[Container Runtime]
+        F --> H[kube-proxy]
+        G --> I[Pods]
+        H --> J[Service Networking]
+    end
+    
+    subgraph "Add-ons"
+        K[DNS - CoreDNS]
+        L[Dashboard]
+        M[CNI Plugin]
+        N[Ingress Controller]
+    end
+    
+    subgraph "External Components"
+        O[kubectl Client]
+        P[Load Balancer]
+        Q[Storage Classes]
+    end
+    
+    A --> F
+    O --> A
+    P --> H
+    M --> I
+    K --> I
+    
+    subgraph "Network Flow"
+        R[External Traffic] --> P
+        P --> S[NodePort/LoadBalancer]
+        S --> T[ClusterIP Service]
+        T --> U[Pod Network]
+    end
+```
+
+### Control Plane Components
+- **API Server**: Central management component, REST API endpoint
+- **etcd**: Distributed key-value store for cluster state
+- **Scheduler**: Assigns pods to nodes based on resource requirements
+- **Controller Manager**: Runs controller processes (ReplicaSet, Deployment, etc.)
+- **Cloud Controller Manager**: Integrates with cloud provider APIs
+
+### Data Plane Components
+- **kubelet**: Node agent that manages pods and containers
+- **Container Runtime**: Runs containers (containerd, Docker, CRI-O)
+- **kube-proxy**: Network proxy for service discovery and load balancing
+
 ### Architecture Comparison
 ```mermaid
 graph TB
