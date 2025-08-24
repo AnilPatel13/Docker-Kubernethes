@@ -19,45 +19,36 @@ Complete Kubernetes cluster setup environments using Vagrant and VirtualBox. Inc
 ### Kubernetes Architecture
 ```mermaid
 graph TB
-    subgraph "Control Plane (Master Node)"
-        A[API Server] --> B[etcd]
-        A --> C[Scheduler]
-        A --> D[Controller Manager]
-        E[Cloud Controller Manager] --> A
+    subgraph CP["Control Plane"]
+        API[API Server]
+        ETCD[etcd]
+        SCHED[Scheduler]
+        CM[Controller Manager]
     end
     
-    subgraph "Data Plane (Worker Nodes)"
-        F[kubelet] --> G[Container Runtime]
-        F --> H[kube-proxy]
-        G --> I[Pods]
-        H --> J[Service Networking]
+    subgraph WN["Worker Nodes"]
+        KUBELET[kubelet]
+        PROXY[kube-proxy]
+        RUNTIME[Container Runtime]
+        PODS[Pods]
     end
     
-    subgraph "Add-ons"
-        K[DNS - CoreDNS]
-        L[Dashboard]
-        M[CNI Plugin]
-        N[Ingress Controller]
+    subgraph NET["Networking"]
+        CNI[CNI Plugin]
+        DNS[CoreDNS]
+        SVC[Services]
     end
     
-    subgraph "External Components"
-        O[kubectl Client]
-        P[Load Balancer]
-        Q[Storage Classes]
-    end
-    
-    A --> F
-    O --> A
-    P --> H
-    M --> I
-    K --> I
-    
-    subgraph "Network Flow"
-        R[External Traffic] --> P
-        P --> S[NodePort/LoadBalancer]
-        S --> T[ClusterIP Service]
-        T --> U[Pod Network]
-    end
+    CLIENT[kubectl] --> API
+    API --> ETCD
+    API --> SCHED
+    API --> CM
+    API --> KUBELET
+    KUBELET --> RUNTIME
+    RUNTIME --> PODS
+    CNI --> PODS
+    DNS --> PODS
+    PROXY --> SVC
 ```
 
 ### Control Plane Components
