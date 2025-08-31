@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: traffic-genrator
+  namespace: dev
+  labels:
+    app: traffic-genrator
+spec:
+  containers:
+  - name: traffic-genrator
+    image: anil1318/traffic-gen:1.0.0
+    args:
+      - 'color-api-svc.prod.svc.cluster.local/api'
+      - '0.5'
